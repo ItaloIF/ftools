@@ -1,4 +1,4 @@
-! Fast Fourier Transform - module
+! Fast Fourier Transform
 ! $II-012020-1
 
 module fftm
