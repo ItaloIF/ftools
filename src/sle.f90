@@ -73,6 +73,7 @@ module sle
         ! this subroutine changes matrix A (L\U)
         implicit none
         real(8), intent(in out) :: a(:,:)
+
         integer(8) :: n
         integer(8) :: i
         n = ubound(a,1)
@@ -84,5 +85,61 @@ module sle
         end do
     end subroutine des_lu
 
+    subroutine sle_gss(a,x)
+        ! solver  matrix gauss method
+        implicit none
+        real(8), intent(in) :: a(:,:)
+        real(8), intent(in out) :: x(:)
+
+        integer(8) :: n
+        integer(8) :: i
+        integer(8) :: j
+        real(8), allocatable :: at(:,:)
+        n = ubound(a,1)
+        allocate(at(n,n))
+        at = a
+        do i = 1,n-1
+            do j = 1+1,n
+                x(j) = x(j) - at(j,i)/at(i,i)*x(i)
+                at(j,i:n) = at(j,i:n)-at(j,i)/at(i,i)*at(i,i:n)
+            end do
+        end do
+        call sle_u(at,x)
+    end subroutine sle_gss
+
+    subroutine sle_ch(a,x)
+        ! solver  matrix cholesky method
+        implicit none
+        real(8), intent(in) :: a(:,:)
+        real(8), intent(in out) :: x(:)
+
+        integer(8) :: n
+        real(8), allocatable :: at(:,:)
+        n = ubound(a,1)
+        allocate(at(n,n))
+        at = a
+        call des_ch(at)
+        call sle_l(at,x)
+        call sle_u(at,x)
+    end subroutine sle_ch
+
+    subroutine des_ch(a)
+        ! matrix descomposition A = L·Lt
+        ! only for a Symetric and Definite Positive Matrix
+        implicit none
+        real(8), intent(in out) :: a(:,:)
+        
+        integer(8) :: n
+        integer(8) :: i
+        n = ubound(a,1)
+        a(1,1) = a(1,1)**0.5
+        a(1,2:n) = a(1,2:n)/a(1,1)
+        a(2:n,1) = a(1,2:n)
+        do i = 2,n
+            a(i,i) = (a(i,i) - dot_product(a(1:i-1,i),a(1:i-1,i)))**0.5
+            a(i,i+1:n) = (a(i,i+1:n) - matmul(a(1:i-1,i),a(1:i-1,i+1:n)))/a(i,i)
+            a(i,1:i-1) = a(1:i-1,i)
+        end do
+    end subroutine des_ch
 
 end module sle
