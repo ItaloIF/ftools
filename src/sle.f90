@@ -142,4 +142,112 @@ module sle
         end do
     end subroutine des_ch
 
+    subroutine sle_gc(a,x,tol,imax)
+        ! solver conjugate gradient method
+        ! relajation method
+        ! important tolerance and max number of iterations
+        implicit none
+        real(8), intent(in) :: a(:,:)
+        real(8), intent(in out) :: x(:)
+        real(8), intent(in) :: tol
+        integer(8), intent(in) ::  imax
+
+        integer(8) :: n
+        integer(8) :: i
+        real(8) :: er
+        real(8) :: alpha
+        real(8) :: betha
+        real(8), allocatable :: r(:)
+        real(8), allocatable :: s(:)
+        real(8), allocatable :: q(:)
+
+        n = ubound(a,1)
+        allocate(r(n))
+        allocate(s(n))
+        allocate(q(n))
+        r = x
+        s = x
+        x = 0
+        i = 1
+        ! iterations
+        do
+            q = matmul(a,s)
+            alpha = dot_product(r,r)/dot_product(s,q)
+            x = x + alpha*s
+            er = sqrt(dot_product(alpha*s,alpha*s))
+            if (er.lt.tol.or.i.gt.imax) exit
+            i = i + 1
+            r = r - alpha*q
+            betha = dot_product(r,q)/dot_product(s,q)
+            s = r - betha*s
+        end do 
+    end subroutine sle_gc
+
+    subroutine sle_gs(a,x,tol,imax)
+        ! solver conjugate gradient method with Gauss-Seidel precondition
+        ! relajation method
+        ! important tolerance and max number of iterations
+        implicit none
+        real(8), intent(in) :: a(:,:)
+        real(8), intent(in out) :: x(:)
+        real(8), intent(in) :: tol
+        integer(8), intent(in) ::  imax
+
+        integer(8) :: n
+        integer(8) :: i
+        real(8) :: er
+        real(8) :: alpha
+        real(8) :: betha
+        real(8), allocatable :: r(:)
+        real(8), allocatable :: s(:)
+        real(8), allocatable :: q(:)
+        real(8), allocatable :: p(:)
+
+        n = ubound(a,1)
+        allocate(r(n))
+        allocate(s(n))
+        allocate(q(n))
+        allocate(p(n))
+        r = x
+        s = x
+        call gs_lu(a,p)
+        s = p
+        x = 0
+        do
+            q = matmul(a,s)
+            alpha = dot_product(p,r)/dot_product(s,q)
+            x = x + alpha*s
+            if (er.lt.tol.or.i.gt.imax) exit
+            i = i + 1
+            betha = 1/dot_product(p,r)   ! check order
+            r = r - alpha*q
+            p = r
+            call  gs_lu(a,p)
+            betha = betha*dot_product(p,r)
+            s = p + betha*s
+            q =  matmul(a,s)
+            alpha = dot_product(p,r)/dot_product(s,q)
+            x = x + alpha*s
+        end do
+    end subroutine sle_gs
+
+    subroutine gs_lu(a,p)
+        ! Gauss-Seidel precondition
+        implicit none
+        real(8), intent(in) :: a(:,:)
+        real(8), intent(in out) :: p(:)
+        
+        integer(8) :: n
+        integer(8) :: i
+        real(8), allocatable :: m(:,:)
+
+        n = ubound(a,1)
+        allocate(m(n,n))
+        do i = 1,n-1
+            m(i+1:n,i) = a(i+1:n,i)/a(i,i)
+        end do
+        forall(i = 1:n) m(i,i) = m(i,i) + 1
+        call sle_u(m,p)
+        call sle_l(a,p)
+    end subroutine gs_lu
 end module sle
